@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="ko">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1차 세계대전 퀴즈</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --vh: 1vh;
+    }
+    body {
+      font-family: 'Noto Sans KR', 'DM Sans', sans-serif;
+      background-color: #0f172a; /* Slate 900 */
+    }
+    .heading-font {
+      font-family: 'Playfair Display', 'Noto Sans KR', serif;
+    }
+    @keyframes heartFloat {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-200px) scale(0.5); opacity: 0; }
+    }
+    .heart-particle {
+      position: fixed;
+      animation: heartFloat 2s ease-out forwards;
+      pointer-events: none;
+      font-size: 2rem;
+      z-index: 9999;
+    }
+    .card-grid-item {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card-grid-item:hover:not(.solved) {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 12px 20px rgba(245, 158, 11, 0.2); /* Amber shadow */
+      border-color: #f59e0b;
+    }
+    /* 재도전 모드 시 선택 가능한 오답 카드 디자인 효과 */
+    .card-grid-item.retry-target {
+      animation: pulse 1.5s infinite;
+      cursor: pointer;
+    }
+    @keyframes pulse {
+      0%, 100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { border-color: #f87171; box-shadow: 0 0 12px 6px rgba(239, 68, 68, 0.2); }
+    }
+    .card-grid-item.correct {
+      background: linear-gradient(135deg, #065f46, #047857) !important;
+      border-color: #34d399 !important;
+      color: #a7f3d0 !important;
+    }
+    .card-grid-item.wrong {
+      background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+      border-color: #f87171 !important;
+      color: #fca5a5 !important;
+    }
+    .card-grid-item.solved {
+      cursor: default;
+    }
+  </style>
+ </head>
+ <body class="text-slate-100 min-h-screen flex flex-col justify-between">
+
+  <!-- Main Container -->
+  <main class="flex-grow w-full flex flex-col justify-center items-center">
+    
+    <!-- 1. Mode Screen (시작 화면) -->
+    <div id="mode-screen" class="flex flex-col items-center justify-center gap-6 p-6 w-full max-w-lg mx-auto text-center">
+      <div class="w-full max-w-sm aspect-[16/9] bg-slate-800 rounded-2xl flex flex-col items-center justify-center shadow-2xl border border-slate-700/50 p-6 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-20 h-20 text-amber-500 mb-3 animate-pulse">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2v20M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+        <span class="text-xs tracking-widest text-slate-400 uppercase font-bold">World War I History Quiz</span>
+      </div>
+
+      <h1 class="heading-font text-3xl sm:text-4xl font-extrabold text-amber-400 tracking-tight leading-tight">
+        1차 세계대전 역사 퀴즈
+      </h1>
+      <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-md">
+        인류 역사상 가장 거대했던 갈등 중 하나인 1차 세계대전에 관련된 20개의 핵심 질문을 풀고 실력을 검증해 보세요.
+      </p>
+      
+      <div class="flex flex-col sm:flex-row gap-4 mt-6 w-full max-w-md">
+        <button class="flex-1 px-8 py-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-2" onclick="showScreen('name-screen')">
+          <i data-lucide="play" class="w-5 h-5"></i> 학생용 도전하기
+        </button> 
+        <button class="flex-1 px-8 py-4 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded-xl shadow-lg border border-slate-700 hover:border-amber-500/50 active:scale-95 transition-all flex items-center justify-center gap-2" onclick="openPasswordModal()">
+          <i data-lucide="shield-alert" class="w-5 h-5"></i> 교사용 결과판
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. Name Screen (정보 입력 화면) -->
+    <div id="name-screen" class="hidden flex flex-col items-center justify-center gap-6 p-6 w-full max-w-md mx-auto">
+      <div class="text-center">
+        <h2 class="heading-font text-2xl sm:text-3xl font-bold text-amber-400 mb-2">도전자 정보 등록</h2>
+        <p class="text-xs sm:text-sm text-slate-400">퀴즈 결과 분석 및 순위판 등재를 위해 정보를 입력해 주세요.</p>
+      </div>
+
+      <form id="name-form" class="flex flex-col gap-5 w-full bg-slate-800/80 p-6 rounded-2xl border border-slate-700 shadow-xl">
+        <div class="flex flex-col gap-2">
+          <label for="student-name-input" class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="user" class="w-4 h-4 text-amber-500"></i> 이름 (실명 입력)
+          </label> 
+          <input id="student-name-input" type="text" placeholder="홍길동" class="w-full px-4 py-3 bg-slate-900 border-2 border-slate-700 focus:border-amber-500 rounded-xl focus:outline-none text-base text-white placeholder-slate-500 transition-all" required> 
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="student-birthday-input" class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-4 h-4 text-amber-500"></i> 생년월일
+          </label> 
+          <input id="student-birthday-input" type="date" class="w-full px-4 py-3 bg-slate-900 border-2 border-slate-700 focus:border-amber-500 rounded-xl focus:outline-none text-base text-white transition-all" required> 
+        </div>
+
+        <div class="flex gap-3 mt-2">
+          <button type="button" class="flex-1 py-3 px-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all" onclick="showScreen('mode-screen')">
+            이전으로
+          </button>
+          <button type="submit" class="flex-2 py-3 px-6 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/10 hover:scale-[1.02] active:scale-95 transition-all">
+            퀴즈 시작하기
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 3. Quiz Screen (퀴즈 그리드 화면) -->
+    <div id="quiz-screen" class="hidden flex flex-col items-center p-4 w-full max-w-4xl mx-auto">
+      <div class="w-full bg-slate-800/50 rounded-2xl p-4 sm:p-6 border border-slate-700/50 shadow-2xl">
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-6 pb-4 border-b border-slate-700">
+          <div class="flex items-center gap-3">
+            <div class="bg-amber-500/10 text-amber-400 p-2 rounded-xl border border-amber-500/20">
+              <i data-lucide="clock" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">도전자</p>
+              <p id="quiz-student-info" class="text-sm font-bold text-slate-200">-</p>
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="text-right">
+              <span id="quiz-progress" class="text-xs font-bold text-slate-400 block">0 / 20 완료</span>
+              <span id="quiz-score" class="text-sm font-black text-amber-400 block">점수: 0점</span>
+            </div>
+          </div>
+        </div>
+
+        <p id="quiz-guide-text" class="text-xs sm:text-sm text-amber-400/80 mb-4 font-semibold flex items-center gap-1">
+          <i data-lucide="info" class="w-4 h-4"></i> 질문을 선택하여 퀴즈 카드를 뒤집어 보세요.
+        </p>
+
+        <!-- 퀴즈 카드 그리드 -->
+        <div id="card-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4"></div>
+      </div>
+    </div>
+
+    <!-- 4. Question Modal (문제 선택 팝업) -->
+    <div id="question-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-slate-800 rounded-2xl p-6 max-w-lg w-full border border-slate-700 shadow-2xl transform transition-all">
+        <div class="flex justify-between items-center mb-4">
+          <p id="modal-qnum" class="text-amber-400 text-sm font-extrabold tracking-wider uppercase bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20"></p>
+          <button class="text-slate-400 hover:text-white" onclick="closeModal()"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <p id="modal-question" class="text-white text-lg sm:text-xl font-bold mb-6 leading-relaxed"></p>
+        <div id="modal-choices" class="grid grid-cols-1 gap-3"></div>
+      </div>
+    </div>
+
+    <!-- 5. Joker Overlay (단 1문제 오답 재도전 기회 알림) -->
+    <div id="joker-overlay" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-slate-800 rounded-2xl p-8 max-w-md w-full text-center border border-slate-700 shadow-2xl">
+        <div class="w-20 h-20 bg-blue-500/10 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+          <i data-lucide="refresh-cw" class="w-10 h-10 animate-spin"></i>
+        </div>
+        <p id="joker-message" class="text-xl font-extrabold text-white mb-2">기회가 남았습니다!</p>
+        <p class="text-slate-300 text-sm mb-6">오답이 발생했습니다. 틀린 문제들 중 **단 1개만 골라서 다시 기회**를 얻을 수 있습니다. 신중하게 복구해 보세요!</p>
+        <div class="flex gap-3 justify-center">
+          <button class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all" onclick="dismissJoker()">
+            포기하고 완료
+          </button> 
+          <button class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all" onclick="confirmJokerRetry()">
+            재도전 시작
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Result Screen (결과 화면) -->
+    <div id="result-screen" class="hidden flex flex-col items-center justify-center gap-6 p-6 w-full max-w-2xl mx-auto">
+      <div class="text-center">
+        <h2 id="result-title" class="heading-font text-4xl font-black text-amber-400 mb-2"></h2>
+        <p id="result-score" class="text-2xl font-extrabold text-white"></p>
+        <p id="result-detail" class="text-slate-300 text-sm sm:text-base max-w-md mx-auto mt-2 leading-relaxed"></p>
+      </div>
+
+      <div class="flex gap-4 w-full max-w-md">
+        <button class="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2" onclick="showScreen('mode-screen')">
+          <i data-lucide="home" class="w-5 h-5"></i> 메인으로
+        </button>
+      </div>
+
+      <!-- 오답 해설 아코디언 컨테이너 -->
+      <div id="explanation-container" class="hidden w-full bg-slate-800/40 p-4 sm:p-6 rounded-2xl border border-slate-700/50 mt-4 max-h-[400px] overflow-y-auto"></div>
+    </div>
+
+    <!-- 7. Teacher Dashboard Password Modal (교사용 비밀번호 팝업) -->
+    <div id="password-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
+          <h3 class="text-white font-bold text-lg flex items-center gap-2">
+            <i data-lucide="lock" class="text-amber-500 w-5 h-5"></i> 관리자 권한 확인
+          </h3>
+          <button class="text-slate-400 hover:text-white" onclick="closePasswordModal()"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <p class="text-slate-300 text-sm mb-4">교사 대시보드에 접속하려면 비밀번호를 입력하세요.</p>
+        <form id="password-form" onsubmit="checkTeacherPassword(event)">
+          <div class="mb-4">
+            <input id="teacher-password-input" type="password" placeholder="비밀번호 입력" class="w-full px-4 py-3 bg-slate-900 border-2 border-slate-700 focus:border-amber-500 rounded-xl focus:outline-none text-white text-base transition-all" required>
+            <p id="password-error-msg" class="text-red-400 text-xs mt-2 hidden">비밀번호가 올바르지 않습니다.</p>
+          </div>
+          <div class="flex gap-3">
+            <button type="button" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all" onclick="closePasswordModal()">
+              취소
+            </button>
+            <button type="submit" class="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl transition-all">
+              인증하기
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 8. Teacher Dashboard (교사 관리 화면) -->
+    <div id="teacher-screen" class="hidden p-4 sm:p-6 w-full max-w-5xl mx-auto">
+      <div class="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 shadow-2xl">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="bg-amber-500/10 text-amber-400 p-2.5 rounded-xl border border-amber-500/20">
+              <i data-lucide="database" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h2 class="heading-font text-xl sm:text-2xl font-bold text-white">도전자 전체 기록 대시보드</h2>
+              <p class="text-xs text-slate-400">학생들의 전체 학습 결과 데이터를 수집하고 검토합니다.</p>
+            </div>
+          </div>
+          <button class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center gap-1.5" onclick="showScreen('mode-screen')">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> 나가기
+          </button>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl border border-slate-700/80 overflow-hidden shadow-inner">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-slate-800 text-slate-300 uppercase text-xs font-bold border-b border-slate-700">
+                <tr>
+                  <th class="px-5 py-4">이름</th>
+                  <th class="px-5 py-4 text-center">생년월일</th>
+                  <th class="px-5 py-4 text-center">최종 점수</th>
+                  <th class="px-5 py-4 text-center">재도전 찬스 여부</th>
+                  <th class="px-5 py-4">최종 오답 문항 번호</th>
+                  <th class="px-5 py-4">도전 시각</th>
+                </tr>
+              </thead>
+              <tbody id="teacher-tbody" class="divide-y divide-slate-800">
+                <!-- 동적 레코드 데이터 삽입 영역 -->
+              </tbody>
+            </table>
+          </div>
+          
+          <div id="no-records" class="text-center text-slate-500 py-12 flex flex-col items-center justify-center gap-3">
+            <i data-lucide="folder-open" class="w-12 h-12 text-slate-600"></i>
+            <span>아직 등록된 도전자 기록이 존재하지 않습니다.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Hearts Particle Overlay -->
+  <div id="hearts-container" class="hidden fixed inset-0 pointer-events-none z-50"></div>
+
+  <!-- Footer -->
+  <footer class="w-full py-4 text-center text-xs text-slate-500 border-t border-slate-800/50 mt-8">
+    <p>© 1차 세계대전 퀴즈 - 역사 학습 프로젝트</p>
+  </footer>
+
+  <script>
+    // 퀴즈 문제 은행 데이터 정의 (베르됭 전투 강화 및 치머만 전보 도입)
+    const questions = [
+        { q: "1차 세계대전이 시작된 해는?", choices: ["1912년","1914년","1916년","1918년"], answer: 1, explain: "1914년 6월 28일 사라예보 사건을 계기로 7월 위기가 발생하여 1914년 8월부터 본격적인 전쟁이 시작되었습니다." },
+        { q: "1차 세계대전의 직접적 도화선이 된 사건은?", choices: ["러시아 혁명","사라예보 사건","보스턴 차 사건","베르사유 조약"], answer: 1, explain: "1914년 6월 28일 보스니아-헤르체고비나 수도 사라예보에서 오스트리아-헝가리 대공 프란츠 페르디난드가 암살된 사건입니다." },
+        { q: "삼국동맹에 포함되지 않는 나라는?", choices: ["독일","오스트리아-헝가리","이탈리아","프랑스"], answer: 3, explain: "삼국동맹은 독일, 오스트리아-헝가리, 이탈리아로 구성되었고, 프랑스는 삼국협상에 속했습니다." },
+        { q: "삼국협상에 포함된 나라는?", choices: ["독일","오스만 제국","러시아","불가리아"], answer: 2, explain: "삼국협상은 영국, 프랑스, 러시아로 구성되어 동맹국(독일, 오스트리아-헝가리, 오스만 제국)에 대항했습니다." },
+        { q: "1차 세계대전이 끝난 해는?", choices: ["1917년","1918년","1919년","1920년"], answer: 1, explain: "1918년 11월 11일 독일의 항복으로 1차 세계대전이 종료되었고, 1919년 베르사유 조약이 체결되었습니다." },
+        { q: "참호전이 주로 벌어진 전선은?", choices: ["동부전선","서부전선","발칸전선","중동전선"], answer: 1, explain: "프랑스와 독일 사이의 서부전선에서 참호전이 벌어져 수백만 명의 사상자가 발생했습니다." },
+        { q: "독일의 무제한 잠수함 작전으로 참전한 나라는?", choices: ["일본","미국","중국","브라질"], answer: 1, explain: "독일의 무제한 잠수함 작전으로 미국 선박이 침몰하자, 1917년 4월 미국이 연합국 측으로 참전했습니다." },
+        { q: "1차 세계대전 중 사용된 새로운 무기가 아닌 것은?", choices: ["탱크","독가스","핵폭탄","비행기"], answer: 2, explain: "탱크, 독가스, 비행기는 1차 세계대전에서 처음 사용되었지만, 핵폭탄은 2차 세계대전 후에 사용되었습니다." },
+        { q: "베르됭 전투가 벌어진 나라는?", choices: ["벨기에","프랑스","독일","영국"], answer: 1, explain: "베르됭 전투는 1916년 프랑스 동부의 베르됭에서 벌어진 1차 대전 최악의 전투로, 약 70만 명의 사상자가 발생했습니다." },
+        { q: "1차 세계대전 후 체결된 조약은?", choices: ["비엔나 조약","베르사유 조약","파리 조약","로잔 조약"], answer: 1, explain: "1919년 베르사유 조약은 독일의 배상금, 영토 감소, 군비 제한 등을 규정했습니다." },
+        { q: "1차 세계대전 중 혁명이 일어나 전쟁에서 이탈한 나라는?", choices: ["프랑스","러시아","이탈리아","영국"], answer: 1, explain: "1917년 러시아 혁명으로 소비에트 정부가 수립되어 독일과 브레스트-리토프스크 조약을 맺고 전쟁에서 이탈했습니다." },
+        { q: "오스만 제국은 어느 진영에 속했나?", choices: ["협상국","동맹국","중립국","연합국"], answer: 1, explain: "오스만 제국은 독일, 오스트리아-헝가리와 함께 동맹국으로 참전했습니다." },
+        { q: "1차 세계대전의 결과로 해체된 제국이 아닌 것은?", choices: ["오스만 제국","러시아 제국","대영제국","오스트리아-헝가리 제국"], answer: 2, explain: "오스만, 러시아, 오스트리아-헝가리 제국은 1차 대전으로 해체되었지만, 대영제국은 전쟁 후에도 존속했습니다." },
+        { q: "독일이 멕시코에 미국 공격을 제안하여 미국의 참전을 결정적으로 촉진시킨 비밀 전보 사건은?", choices: ["치머만 전보 사건", "엠스 전보 사건", "텔레그램 스캔들", "발포어 선언"], answer: 0, explain: "1917년 독일 외무장관 치머만이 멕시코에 동맹을 제안한 전보가 영국에 의해 도청되어 공개되면서 미국 내 참전 여론이 폭발적으로 유도되었습니다." },
+        { q: "1차 세계대전 당시 독일 황제는?", choices: ["빌헬름 1세","빌헬름 2세","프리드리히 3세","비스마르크"], answer: 1, explain: "빌헬름 2세는 1888년부터 1918년까지 독일 황대로 재임했고, 1918년 전쟁 패배로 네덜란드로 망명했습니다." },
+        { q: "미국의 참전 시기는?", choices: ["1914년","1915년","1916년","1917년"], answer: 3, explain: "미국은 1917년 4월에 1차 대전에 참전하여 연합국을 지원했고, 전쟁 결과에 큰 영향을 미쳤습니다." },
+        { q: "독일군의 파리 진격을 저지하여 슐리펜 계획을 좌절시키고, 병력 수송을 위해 파리 택시까지 동원한 서부전선의 결정적 전투는?", choices: ["마른 전투", "솜 전투", "베르됭 전투", "탄넨베르크 전투"], answer: 0, explain: "1914년 9월 발생한 제1차 마른 전투는 프랑스-영국 연합군이 독일군의 파리 진격을 격퇴하여 독일의 단기 속전속결 계획인 '슐리펜 계획'을 무산시키고, 서부전선이 장기적인 참호전으로 빠져들게 만든 대표적인 전투입니다." },
+        { q: "1차 세계대전의 사상자 수는 약?", choices: ["100만 명","500만 명","1,700만 명","5,000만 명"], answer: 2, explain: "1차 세계대전의 전체 사상자는 약 1,700만 명으로 추정되며, 이는 당시로서는 엄청난 규모의 인명피해였습니다." },
+        { q: "전쟁 후 설립된 국제기구는?", choices: ["유엔","국제연맹","NATO","EU"], answer: 1, explain: "1920년 국제연맹이 설립되어 전쟁 재발을 방지하려 했으나, 미국의 미가입 등으로 효과적이지 못했습니다." },
+        { q: "1차 세계대전의 주요 원인이 아닌 것은?", choices: ["민족주의","제국주의","공산주의 확산","군국주의"], answer: 2, explain: "민족주의, 제국주의, 군국주의는 1차 대전의 주요 원인이었지만, 공산주의 확산은 전쟁 중 러시아 혁명으로 나타난 결과입니다." }
+    ];
+
+    let studentName = "";
+    let studentBirthday = "";
+    let score = 0;
+    let solvedCards = {}; // index -> 'correct' | 'wrong'
+    let wrongIndices = [];
+    let retryMode = false;
+    let hasUsedRetry = false; // 재도전 찬스 사용 여부 기록
+    let allRecords = [];
+    let quizStartTime = null;
+
+    // 뷰포트 높이 보정 로직
+    function setVh() {
+      let vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    window.addEventListener('resize', setVh);
+    window.addEventListener('DOMContentLoaded', setVh);
+
+    // 로컬 스토리지에서 기록 로드
+    function loadLocalRecords() {
+      const stored = localStorage.getItem('ww1_quiz_records');
+      if (stored) {
+        try {
+          allRecords = JSON.parse(stored);
+        } catch(e) {
+          allRecords = [];
+        }
+      }
+    }
+
+    // 로컬 스토리지에 기록 저장 및 리액션 유도
+    function saveLocalRecord(record) {
+      allRecords.push(record);
+      localStorage.setItem('ww1_quiz_records', JSON.stringify(allRecords));
+      renderTeacherTable();
+    }
+
+    function showScreen(id) {
+        ['mode-screen','name-screen','quiz-screen','result-screen','teacher-screen'].forEach(s => {
+            const screen = document.getElementById(s);
+            if (s === id) {
+              screen.classList.remove('hidden');
+              screen.classList.add('flex');
+            } else {
+              screen.classList.add('hidden');
+              screen.classList.remove('flex');
+            }
+        });
+        window.scrollTo(0, 0);
+    }
+
+    // 교사용 보안 패널 제어 로직
+    function openPasswordModal() {
+      const modal = document.getElementById('password-modal');
+      document.getElementById('teacher-password-input').value = "";
+      document.getElementById('password-error-msg').classList.add('hidden');
+      modal.classList.remove('hidden');
+      setTimeout(() => document.getElementById('teacher-password-input').focus(), 100);
+    }
+
+    function closePasswordModal() {
+      document.getElementById('password-modal').classList.add('hidden');
+    }
+
+    function checkTeacherPassword(e) {
+      e.preventDefault();
+      const pwd = document.getElementById('teacher-password-input').value;
+      if (pwd === "교사용1234") {
+        closePasswordModal();
+        showScreen('teacher-screen');
+        renderTeacherTable();
+      } else {
+        const errorMsg = document.getElementById('password-error-msg');
+        errorMsg.classList.remove('hidden');
+      }
+    }
+
+    // 도전자 정보 폼 전송 이벤트 처리
+    document.getElementById('name-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        studentName = document.getElementById('student-name-input').value.trim();
+        studentBirthday = document.getElementById('student-birthday-input').value;
+        if (!studentName || !studentBirthday) return;
+        startQuiz();
+    });
+
+    function startQuiz() {
+        score = 0; 
+        solvedCards = {}; 
+        wrongIndices = []; 
+        retryMode = false; 
+        hasUsedRetry = false;
+        quizStartTime = new Date();
+        
+        document.getElementById('quiz-guide-text').innerHTML = `<i data-lucide="info" class="w-4 h-4"></i> 질문을 선택하여 퀴즈 카드를 뒤집어 보세요.`;
+        document.getElementById('quiz-student-info').textContent = `${studentName} (${studentBirthday})`;
+        showScreen('quiz-screen');
+        renderGrid();
+        lucide.createIcons();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('card-grid');
+        grid.innerHTML = '';
+        
+        const indices = [...Array(20).keys()];
+        
+        indices.forEach((qIdx) => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            const num = qIdx + 1;
+            
+            card.className = 'card-grid-item flex flex-col items-center justify-center rounded-2xl font-bold text-white text-lg shadow-md aspect-square border-2 border-slate-700/80';
+            
+            if (solvedCards[qIdx] === 'correct') {
+                card.classList.add('correct', 'solved');
+                card.innerHTML = `
+                  <span class="text-xs text-emerald-300 mb-1 font-bold">Q${num}</span>
+                  <span class="text-2xl">✓</span>
+                `;
+            } else if (solvedCards[qIdx] === 'wrong') {
+                if (retryMode) {
+                    // 재도전 모드 시 오답 카드들을 선택 가능하도록 펄스 애니메이션 부여
+                    card.classList.add('wrong', 'retry-target');
+                    card.innerHTML = `
+                      <span class="text-xs text-red-300 mb-1 font-bold">Q${num}</span>
+                      <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-200">선택</span>
+                    `;
+                    card.onclick = () => openQuestion(qIdx);
+                } else {
+                    card.classList.add('wrong', 'solved');
+                    card.innerHTML = `
+                      <span class="text-xs text-red-300 mb-1 font-bold">Q${num}</span>
+                      <span class="text-xl">❌</span>
+                    `;
+                }
+            } else {
+                card.style.background = 'linear-gradient(135deg, #1e293b, #334155)';
+                card.innerHTML = `
+                  <span class="text-xs text-slate-400 mb-1 font-medium">문제</span>
+                  <span class="text-xl font-extrabold text-amber-400">${num}</span>
+                `;
+                // 일반 모드에서는 미해결 카드만 열기 가능
+                if (!retryMode) {
+                    card.onclick = () => openQuestion(qIdx);
+                }
+            }
+            grid.appendChild(card);
+        });
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const solved = Object.keys(solvedCards).length;
+        const total = 20;
+        document.getElementById('quiz-progress').textContent = `${solved} / ${total} 완료`;
+        document.getElementById('quiz-score').textContent = `점수: ${score}점`;
+    }
+
+    function openQuestion(qIdx) {
+        const q = questions[qIdx];
+        document.getElementById('modal-qnum').textContent = `QUESTION ${qIdx + 1}`;
+        document.getElementById('modal-question').textContent = q.q;
+        
+        const container = document.getElementById('modal-choices');
+        container.innerHTML = '';
+        
+        q.choices.forEach((choice, idx) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w-full py-3.5 px-4 rounded-xl border-2 border-slate-600 hover:border-amber-500 hover:bg-amber-500/10 font-medium text-slate-100 transition-all text-left flex items-center justify-between text-sm sm:text-base';
+            btn.innerHTML = `
+              <span>${choice}</span>
+              <span class="w-5 h-5 rounded-full border border-slate-500 flex items-center justify-center text-xs text-slate-400">${idx+1}</span>
+            `;
+            btn.onclick = () => handleAnswer(qIdx, idx, btn, container);
+            container.appendChild(btn);
+        });
+        document.getElementById('question-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('question-modal').classList.add('hidden');
+    }
+
+    function handleAnswer(qIdx, chosen, selectedBtn, container) {
+        const q = questions[qIdx];
+        const buttons = container.querySelectorAll('button');
+        buttons.forEach(b => b.disabled = true);
+
+        const isCorrect = (chosen === q.answer);
+
+        if (isCorrect) {
+            selectedBtn.className = 'w-full py-3.5 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-950/60 font-semibold text-emerald-300 transition-all text-left flex items-center justify-between text-sm sm:text-base';
+            selectedBtn.querySelector('span:last-child').className = 'w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-xs text-slate-950 font-bold';
+            selectedBtn.querySelector('span:last-child').textContent = '✓';
+            solvedCards[qIdx] = 'correct';
+            score++;
+            
+            // 재도전 찬스 성공 시 오답 목록에서 회수
+            if (retryMode) {
+              wrongIndices = wrongIndices.filter(idx => idx !== qIdx);
+            }
+        } else {
+            selectedBtn.className = 'w-full py-3.5 px-4 rounded-xl border-2 border-red-500 bg-red-950/60 font-semibold text-red-300 transition-all text-left flex items-center justify-between text-sm sm:text-base';
+            selectedBtn.querySelector('span:last-child').className = 'w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-xs text-white font-bold';
+            selectedBtn.querySelector('span:last-child').textContent = '✕';
+            
+            const correctBtn = buttons[q.answer];
+            correctBtn.className = 'w-full py-3.5 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-950/40 font-semibold text-emerald-300 transition-all text-left flex items-center justify-between text-sm sm:text-base';
+            
+            solvedCards[qIdx] = 'wrong';
+            if (!retryMode) {
+              wrongIndices.push(qIdx);
+            }
+        }
+
+        setTimeout(() => {
+            closeModal();
+            
+            if (retryMode) {
+              // 단 1개의 문제에 대해서만 재도전 기회를 주므로, 찬스를 수행하면 즉시 완료 화면으로 이동
+              retryMode = false;
+              hasUsedRetry = true;
+              showFinalResult();
+            } else {
+              renderGrid();
+              checkCompletion();
+            }
+        }, 1500);
+    }
+
+    function checkCompletion() {
+        const solvedCount = Object.keys(solvedCards).length;
+        if (solvedCount >= 20) {
+            if (wrongIndices.length > 0) {
+                // 아직 1회 찬스를 사용하지 않았다면 알림 모달 출력
+                showJokerNotice();
+            } else {
+                showFinalResult();
+            }
+        }
+    }
+
+    function showJokerNotice() {
+      const overlay = document.getElementById('joker-overlay');
+      document.getElementById('joker-message').textContent = `오답: ${wrongIndices.length}개 발견`;
+      overlay.classList.remove('hidden');
+    }
+
+    function dismissJoker() {
+      document.getElementById('joker-overlay').classList.add('hidden');
+      showFinalResult(); 
+    }
+
+    function confirmJokerRetry() {
+      document.getElementById('joker-overlay').classList.add('hidden');
+      retryMode = true;
+      
+      // 알림 가이드 갱신
+      document.getElementById('quiz-guide-text').innerHTML = `<i data-lucide="info" class="w-4 h-4"></i> <span class="text-red-400 font-extrabold">단 1회의 기회!</span> 아래의 틀린 문제(❌) 카드 중 다시 풀 문항 하나를 직접 터치하세요.`;
+      
+      renderGrid();
+      lucide.createIcons();
+    }
+
+    async function showFinalResult() {
+        showScreen('result-screen');
+        
+        const finalWrong = [];
+        for (let i = 0; i < 20; i++) { 
+          if (solvedCards[i] === 'wrong') finalWrong.push(i); 
+        }
+        
+        let resultTitle = '퀴즈 완료!';
+        let resultDetail = finalWrong.length > 0 
+          ? `최종 오답: ${finalWrong.map(i=>i+1).join(', ')}번` 
+          : '모든 문제를 맞혔습니다! 참된 역사의 마스터이시군요.';
+
+        if (score === 20) {
+            resultTitle = '🎉 완벽한 만점! 🎉';
+            showHearts();
+            if (quizStartTime) {
+                const endTime = new Date();
+                const timeDiffMs = endTime - quizStartTime;
+                const minutes = Math.floor(timeDiffMs / 60000);
+                const seconds = Math.floor((timeDiffMs % 60000) / 1000);
+                resultDetail = `⏱️ 만점 소요 시간: ${minutes}분 ${seconds}초`;
+            }
+        }
+
+        document.getElementById('result-title').textContent = resultTitle;
+        document.getElementById('result-score').textContent = `최종 결과: ${score} / 20`;
+        document.getElementById('result-detail').textContent = resultDetail;
+
+        // 오답 해설 노출 제어
+        if (finalWrong.length > 0) {
+            showExplanations(finalWrong);
+        } else {
+            document.getElementById('explanation-container').classList.add('hidden');
+        }
+
+        // 기록 개체 저장
+        const record = {
+            student_name: studentName || '익명 도전자',
+            student_birthday: studentBirthday || '미입력',
+            score: score,
+            total_questions: 20,
+            wrong_answers: finalWrong.map(i=>i+1).join(', ') || '없음',
+            retry_used: hasUsedRetry ? '1회 사용함' : '미사용',
+            completed_at: new Date().toISOString()
+        };
+
+        // 로컬 데이터 및 SDK 저장 진행
+        saveLocalRecord(record);
+
+        if (window.dataSdk && typeof window.dataSdk.create === 'function') {
+          try {
+            await window.dataSdk.create(record);
+          } catch(e) {
+            console.warn("SDK 저장 실패: ", e);
+          }
+        }
+    }
+
+    function showExplanations(wrongIndexes) {
+        const container = document.getElementById('explanation-container');
+        container.innerHTML = '';
+        
+        const title = document.createElement('div');
+        title.className = 'text-amber-400 font-bold text-lg mb-4 flex items-center gap-2 pb-2 border-b border-slate-700';
+        title.innerHTML = '<i data-lucide="book-open" class="w-5 h-5"></i> 📚 최종 오답 분석 노트';
+        container.appendChild(title);
+
+        wrongIndexes.forEach(idx => {
+            const q = questions[idx];
+            const card = document.createElement('div');
+            card.className = 'bg-slate-900/60 rounded-xl p-4 mb-3 border border-slate-700/50';
+            
+            const qText = document.createElement('p');
+            qText.className = 'text-amber-300 font-bold mb-2 text-sm sm:text-base';
+            qText.textContent = `문제 ${idx+1}: ${q.q}`;
+            
+            const ansText = document.createElement('p');
+            ansText.className = 'text-slate-300 mb-2 text-xs sm:text-sm';
+            ansText.innerHTML = `<span class="text-emerald-400 font-semibold">정답:</span> ${q.choices[q.answer]}`;
+            
+            const expText = document.createElement('p');
+            expText.className = 'text-slate-300 text-xs sm:text-sm leading-relaxed border-t border-slate-800 pt-2 mt-2';
+            expText.innerHTML = `<span class="text-blue-400 font-semibold">설명:</span> ${q.explain}`;
+            
+            card.appendChild(qText);
+            card.appendChild(ansText);
+            card.appendChild(expText);
+            container.appendChild(card);
+        });
+
+        container.classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    // 만점 축하 세레머니 하트 파티클 이펙트
+    function showHearts() {
+        const container = document.getElementById('hearts-container');
+        container.innerHTML = '';
+        container.classList.remove('hidden');
+        for (let i = 0; i < 30; i++) {
+            setTimeout(() => {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle'; 
+                heart.textContent = '🏅';
+                heart.style.left = Math.random() * 100 + '%'; 
+                heart.style.top = (60 + Math.random() * 40) + '%';
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 2000);
+            }, i * 100);
+        }
+        setTimeout(() => container.classList.add('hidden'), 4000);
+    }
+
+    // 교사용 결과 대시보드 표 렌더링
+    function renderTeacherTable() {
+        const tbody = document.getElementById('teacher-tbody');
+        const noRec = document.getElementById('no-records');
+        
+        if (allRecords.length === 0) { 
+          tbody.innerHTML = ''; 
+          noRec.classList.remove('hidden'); 
+          return; 
+        }
+        
+        noRec.classList.add('hidden');
+        tbody.innerHTML = allRecords.map(r => {
+            const formattedDate = r.completed_at ? new Date(r.completed_at).toLocaleString('ko-KR', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : '-';
+
+            return `
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                  <td class="px-5 py-4 font-semibold text-slate-100">${esc(r.student_name)}</td>
+                  <td class="px-5 py-4 text-center text-slate-300">${esc(r.student_birthday)}</td>
+                  <td class="px-5 py-4 text-center">
+                    <span class="px-2.5 py-1 rounded-full text-xs font-black ${r.score === 20 ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-700/50 text-slate-300'}">
+                      ${r.score} / 20
+                    </span>
+                  </td>
+                  <td class="px-5 py-4 text-center text-slate-300">
+                    <span class="px-2 py-0.5 rounded text-xs ${r.retry_used === '1회 사용함' ? 'bg-blue-500/20 text-blue-300' : 'bg-slate-700/50 text-slate-400'}">
+                      ${r.retry_used || '미사용'}
+                    </span>
+                  </td>
+                  <td class="px-5 py-4 text-slate-400 font-mono text-xs max-w-[150px] truncate" title="${r.wrong_answers || '없음'}">${r.wrong_answers || '없음'}</td>
+                  <td class="px-5 py-4 text-slate-400 text-xs">${formattedDate}</td>
+              </tr>
+            `;
+        }).join('');
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    // 초기화 로드 핸들러
+    window.onload = function() {
+      loadLocalRecords();
+      lucide.createIcons();
+      
+      // data_sdk 연동 안전망 확보
+      if (window.dataSdk && typeof window.dataSdk.init === 'function') {
+        window.dataSdk.init({
+          onDataChanged(data) {
+            if (data && Array.isArray(data)) {
+              allRecords = data;
+              renderTeacherTable();
+            }
+          }
+        });
+      }
+    };
+  </script>
+ </body>
+</html>
